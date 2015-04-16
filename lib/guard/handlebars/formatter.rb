@@ -3,24 +3,29 @@ module Guard
     module Formatter
       class << self
 
-        def info(message, options={})
-          ::Guard::UI.info(message, options)
+        def info(message, options = {})
+          Compat::UI.info(message, options)
         end
 
         def debug(message, options={})
-          ::Guard::UI.debug(message, options)
+          Compat::UI.debug(message, options)
         end
 
         def error(message, options={})
-          ::Guard::UI.error(::Guard::UI.send(:color, message, "\e[31m"), options)
+          Compat::UI.error(message, options)
         end
 
         def success(message, options={})
-          ::Guard::UI.info(::Guard::UI.send(:color, message, "\e[32m"), options)
+          Compat::UI.info(message, options)
         end
 
         def notify(message, options={})
-          ::Guard::Notifier.notify(message, options)
+          Compat::UI.notify(message, options)
+        end
+
+        private
+        def color(text, color_code)
+          Compat::UI.send(:color_enabled?) ? "\e[0#{ color_code }m#{ text }\e[0m" : text
         end
 
       end

@@ -1,38 +1,63 @@
-require 'guard'
-require 'guard/guard'
-require 'guard/watcher'
+require 'guard/compat/plugin'
+
 
 module Guard
-  class Handlebars < Guard
+  class Handlebars < Plugin
 
-    autoload :Formatter, 'guard/handlebars/formatter'
-    autoload :Inspector, 'guard/handlebars/inspector'
-    autoload :Runner, 'guard/handlebars/runner'
-    autoload :Template, 'guard/handlebars/template'
+    require 'guard/handlebars/formatter'
+    require 'guard/handlebars/inspector'
+    require 'guard/handlebars/runner'
+    require 'guard/handlebars/template'
 
-    def initialize(watchers = [], options = {})
-      watchers = [] if !watchers
-      watchers << ::Guard::Watcher.new(%r{#{ options[:input] }/(.+\.handlebars)}) if options[:input]
+    DEFAULT_OPTIONS = {
+      bare: false,
+      shallow: false,
+      hide_success: false,
+      compiled_name: 'compiled.js'
+    }
 
-      super(watchers, {
-          :bare => false,
-          :shallow => false,
-          :hide_success => false,
-          :compiled_name => 'compiled.js',
-      }.merge(options))
+    attr_reader :patterns
+
+    def initialize(options = {})
+      defaults = DEFAULT_OPTIONS.clone
+      @patterns = options.dup.delete(:patterns) || [%r{(.*)\.handlebars}]
+      if options[:input]
+        @patterns << %r{#{options[:input]}/(.+\.handlebars)}
+      end
+
+
+      # msg = ":input option not provided (see current template Guardfile)"
+      # fail msg unless options[:input]
+
+      super(defaults.merge(options))
+    end
+
+    def start
+      run_all if options[:all_on_start]
     end
 
     def run_all
-      run_on_modifications(Watcher.match_files(self, Dir.glob(File.join('**', '*.handlebars'))))
+      found = Dir.glob(File.join('**', '*.handlebars'))
+      found.select! do |file|
+        @patterns.any? do |pattern|
+          pattern.match(file)
+        end
+      end
+      run_on_modifications(found)
+    end
+
+    def run_on_changes(paths)
+      _changed_files, success = Runner.run(Inspector.clean(paths), @patterns, options)
+      notify(_changed_files)
     end
 
     def run_on_modifications(paths)
-      changed_files, success = Runner.run(Inspector.clean(paths), watchers, options)
+      _changed_files, success = Runner.run(Inspector.clean(paths), @patterns, options)
       throw :task_has_failed unless success
     end
-    
+
     def run_on_removals(paths)
-      Runner.remove(Inspector.clean(paths, :missing_ok => true), watchers, options)
+      Runner.remove(Inspector.clean(paths, missing_ok: true), @patterns, options)
     end
 
   end

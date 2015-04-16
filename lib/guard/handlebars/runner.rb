@@ -3,25 +3,26 @@ module Guard
     module Runner
       class << self
 
-        def run(files, watchers, options = {})
-          notify_start(files, options)
-          changed_files, errors = compile_files(files, options, watchers)
-          notify_result(changed_files, errors, options)
+        attr_accessor :last_run_failed
 
-          changed_files
+        def run(files, patterns, options = {})
+          notify_start(files, options)
+          changed_files, errors = compile_files(files, patterns, options)
+          notify_result(changed_files, errors, options)
+          [changed_files, errors.empty?]
         end
 
-      private
+      #private
 
         def notify_start(files, options)
           message = options[:message] || "Compile #{ files.join(', ') }"
           Formatter.info(message, :reset => true)
         end
 
-        def compile_files(files, options, watchers)
+        def compile_files(files, patterns, options)
           errors        = []
           changed_files = []
-          directories   = detect_nested_directories(watchers, files, options)
+          directories   = detect_nested_directories(files, patterns, options)
 
           directories.each do |directory, scripts|
             scripts.each do |file|
@@ -53,13 +54,13 @@ module Guard
           filename
         end
 
-        def detect_nested_directories(watchers, files, options)
+        def detect_nested_directories(files, patterns, options)
           return { options[:output] => files } if options[:shallow]
 
           directories = {}
 
-          watchers.product(files).each do |watcher, file|
-            if matches = file.match(watcher.pattern)
+          patterns.product(files).each do |pattern, file|
+            if matches = file.match(pattern)
               target = matches[1] ? File.join(options[:output], File.dirname(matches[1])).gsub(/\/\.$/, '') : options[:output]
               if directories[target]
                 directories[target] << file
@@ -75,7 +76,8 @@ module Guard
         def notify_result(changed_files, errors, options = {})
           if !errors.empty?
             Formatter.notify(errors.join("\n"), :title => 'Handlebars results', :image => :failed)
-          elsif !options[:hide_success]
+          elsif !options[:hide_success] || last_run_failed
+            self.last_run_failed = false
             message = "Successfully generated #{ changed_files.join(', ') }"
             Formatter.success(message)
             Formatter.notify(message, :title => 'Handlebars results')
