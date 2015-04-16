@@ -20,10 +20,13 @@ module Guard
 
     def initialize(options = {})
       defaults = DEFAULT_OPTIONS.clone
-      @patterns = options.dup.delete(:patterns) || [%r{(.*)\.handlebars}]
+      @patterns = options.dup.delete(:patterns) || []
       if options[:input]
         @patterns << %r{#{options[:input]}/(.+\.handlebars)}
       end
+
+      puts options
+      puts @patterns
 
 
       # msg = ":input option not provided (see current template Guardfile)"
@@ -52,6 +55,7 @@ module Guard
     end
 
     def run_on_modifications(paths)
+      puts "Run on Modifications"
       _changed_files, success = Runner.run(Inspector.clean(paths), @patterns, options)
       throw :task_has_failed unless success
     end
