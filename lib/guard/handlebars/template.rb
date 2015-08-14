@@ -17,12 +17,7 @@ module Guard
 
       def compile
         # TODO Do not assume require.js, but make it possible
-        compiled = "(function() {"
-        compiled << "\n  var #{function} = Handlebars.compile('#{escape(source)}');"
-        compiled << "\n  Handlebars.registerPartial('#{function}', #{function});" if partial?
-        compiled << "\n  return #{function};"
-        compiled << "\n}).call(this);"
-
+        compiled = "Twork.templates.#{function} = Handlebars.compile('#{escape(source)}');"
         compiled
       end
 
